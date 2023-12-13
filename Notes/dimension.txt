@@ -1,0 +1,39 @@
+The cl::EnqueueArgs() function in the SYCL (Standard C++ for heterogeneous computing) programming model is used to create an argument pack for kernel enqueuing. It is typically used when enqueueing a kernel with a command group in SYCL.
+
+The syntax for cl::EnqueueArgs is as follows:
+
+cpp
+
+cl::EnqueueArgs(
+    cl::Queue queue,
+    cl::NDRange globalSize,          // Global work size
+    cl::NDRange localSize = {},      // Local work size (optional)
+    cl::NDRange offset = {},         // Offset (optional)
+    const cl::vector_class<cl::event>* events = nullptr // Events (optional)
+)
+
+Here's a brief explanation of the parameters:
+
+globalSize: Represents the global work size. It defines the total number of work-items in each dimension of the global space.
+
+localSize: Represents the local work size. It defines the number of work-items in each dimension of a work-group. This is an optional parameter, and if not specified, the runtime will choose an appropriate local size.
+
+offset: Represents the offset. It defines an offset in the global work size for the starting point of execution. This is an optional parameter, and if not specified, the offset is assumed to be zero.
+
+events: Represents a vector of events that the kernel operation depends on. This is an optional parameter. If specified, it provides synchronization points with other commands.
+
+
+Here's an example of using cl::EnqueueArgs:
+cl::EnqueueArgs enqueueArgs(
+    myQueue,
+    cl::NDRange(globalSize),
+    cl::NDRange(localSize),
+    cl::NDRange(offset),
+    &eventsVector
+);
+
+// Example kernel enqueue
+myQueue.enqueueNDRangeKernel(myKernel, enqueueArgs, myEvent);
+
+
+Note: SYCL is a higher-level abstraction over OpenCL, and the actual syntax might depend on the SYCL version and the underlying runtime. The above information is based on the SYCL 2020 specification.

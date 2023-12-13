@@ -1,0 +1,128 @@
+ok then let's take matrix multiplication 
+this is the call for function execution 
+
+  cl::NDRange global(N, N);
+            naive_mmul(cl::EnqueueArgs(queue, global),
+                    N, d_a, d_b, d_c);
+and below is the kernel code
+__kernel void mmul(
+    const int N,
+    __global float* A,
+    __global float* B,
+    __global float* C)
+{
+    int k;
+    int i = get_global_id(0);
+    int j = get_global_id(1);
+    float tmp;
+    if ((i < N) && (j < N))
+    {
+        tmp = 0.0f;
+        for (k = 0; k < N; k++)
+            tmp += A[i*N+k] * B[k*N+j];
+        C[i*N+j] = tmp;
+    }
+}
+ChatGPT
+In the matrix multiplication OpenCL kernel you provided, each work-item is responsible for computing a single element of the resulting matrix. The global work size is specified as cl::NDRange(N, N), indicating that the kernel will be executed in a 2D space with N work-items along each dimension.
+
+Let's break down the relevant parts of the kernel code:
+
+c
+Copy code
+__kernel void mmul(
+    const int N,
+    __global float* A,
+    __global float* B,
+    __global float* C)
+{
+    int k;
+    int i = get_global_id(0);
+    int j = get_global_id(1);
+    float tmp;
+    if ((i < N) && (j < N))
+    {
+        tmp = 0.0f;
+        for (k = 0; k < N; k++)
+            tmp += A[i*N+k] * B[k*N+j];
+        C[i*N+j] = tmp;
+    }
+}
+int i = get_global_id(0); and int j = get_global_id(1);: These lines determine the global ID of the work-item along the first (i) and second (j) dimensions. Each work-item computes a unique element of the resulting matrix identified by the pair (i, j).
+
+if ((i < N) && (j < N)): This condition ensures that the work-item only performs the multiplication and accumulation if its global ID is within the valid range for both dimensions. This prevents out-of-bounds access.
+
+Matrix Multiplication: The nested loop for (k = 0; k < N; k++) computes the dot product of the corresponding row of matrix A (A[i*N+k]) and column of matrix B (B[k*N+j]). The result is accumulated in the tmp variable.
+
+C[i*N+j] = tmp;: The final result of the dot product is stored in the output matrix C at the position corresponding to the global IDs (i, j).
+
+The parallelism is achieved by launching multiple work-items with different global IDs, and each work-item independently computes a unique element of the result matrix. The 2D global work size allows for parallelization along both dimensions of the result matrix.
+
+User
+how many work items are here in the order of matrix N is 2
+ChatGPT
+In the provided OpenCL kernel for matrix multiplication, the number of work-items is determined by the global work size specified when invoking the kernel. The global work size is given by cl::NDRange(N, N).
+
+For a 2D matrix multiplication where the order of the matrix is N x N, the total number of work-items is equal to the product of the sizes along each dimension of the global work size. In this case, it's N * N.
+
+So, for cl::NDRange(N, N), if N is 2, the total number of work-items is 2 * 2 = 4.
+
+Therefore, there are 4 work-items in total, each responsible for computing a single element in the resulting matrix. Each work-item will have its unique global ID, which is used to determine the position of the element in the matrix.
+
+int i = get_global_id(0); and int j = get_global_id(1);: These lines determine the global ID of the work-item along the first (i) and second (j) dimensions. Each work-item computes a unique element of the resulting matrix identified by the pair (i, j). 
+does this mean the work-items are arranged as N rows and N columns in the compute unit?
+ChatGPT
+Yes, that's correct. In the context of matrix multiplication, the global IDs of the work-items are often used to map each work-item to a specific element in the resulting matrix.
+
+The lines:
+
+cpp
+Copy code
+int i = get_global_id(0);
+int j = get_global_id(1);
+indicate that the global ID along the first dimension (i) corresponds to the row index, and the global ID along the second dimension (j) corresponds to the column index. Each work-item is uniquely identified by this pair of indices, and each work-item is responsible for computing the value of a specific element in the resulting matrix.
+
+So, if the global work size is specified as cl::NDRange(N, N), where N is the size of the matrix, the work-items are arranged in a 2D grid with N rows and N columns. Each work-item operates on a specific row-column pair, effectively covering the entire matrix.
+
+User
+for N = 2 , 
+how many times does the    for (k = 0; k < N; k++) loop run here in the 4 work-items
+
+__kernel void mmul(
+    const int N,
+    __global float* A,
+    __global float* B,
+    __global float* C)
+{
+    int k;
+    int i = get_global_id(0);
+    int j = get_global_id(1);
+    float tmp;
+    if ((i < N) && (j < N))
+    {
+        tmp = 0.0f;
+        for (k = 0; k < N; k++)
+            tmp += A[i*N+k] * B[k*N+j];
+        C[i*N+j] = tmp;
+    }
+}
+ChatGPT
+For N = 2, you have a 2x2 matrix. In this case, each work-item is responsible for computing a single element in the resulting matrix. The work-items are organized in a 2D grid, and each work-item corresponds to a unique (i, j) pair, where i and j are the row and column indices, respectively.
+
+Given the kernel code you provided:
+
+Here's how the loop runs for each work-item:
+
+When i = 0, j = 0:
+The loop runs for k = 0 and k = 1 (2 times).
+
+When i = 0, j = 1:
+The loop runs for k = 0 and k = 1 (2 times).
+
+When i = 1, j = 0:
+The loop runs for k = 0 and k = 1 (2 times).
+
+When i = 1, j = 1:
+The loop runs for k = 0 and k = 1 (2 times).
+
+So, for each of the 4 work-items, the loop runs 2 times. In total, the loop runs 4 * 2 = 8 times across all work-items for N = 2.

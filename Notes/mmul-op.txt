@@ -1,0 +1,184 @@
+///////// For naive mmul - kernel workid.cl
+kernel 1: cl::NDRange global(N,N);
+
+__kernel void workid(                             
+   __global float* a,   
+   __global float* b,                                    
+   __global float* c,     
+   __global float* d, 
+   __global float* e,                      
+   const int N)               
+{                                          
+   int i = get_global_id(0);      
+   int j = get_global_id(1);
+   float tmp;    
+   float tmpp;    
+   int k;
+   if ((i < N) && (j < N)) {
+      tmp = 0.0f;
+      tmpp = 0.0f;
+      for(k=0;k<N;k++) {
+         tmp = tmp + 1.0f;
+         tmpp += a[i*N+k] * b[k*N+j];
+      }  
+       c[i*N+j] = tmp;     
+       d[i*N+j] = i+j;      
+       e[i*N+j] = tmpp;           
+   }
+}                
+
+Display matrix A :
+3 3 3 
+3 3 3 
+3 3 3 
+Display matrix B :
+5 5 5 
+5 5 5 
+5 5 5 
+Order of matrix : 3
+Context for Device : 1
+
+The kernels ran in 0.002000 seconds
+o/p check E =  45 from: 3 and 5 for matrix order 3
+
+Resultant Matrix D(sum of workid i+j):
+0 1 2 
+1 2 3 
+2 3 4 
+
+Resultant Matrix C(no of times each work item ran):
+3 3 3 
+3 3 3 
+3 3 3 
+
+Resultant Matrix E(e = a * b):
+45 45 45 
+45 45 45 
+45 45 45 
+
+kernel 2: cl::NDRange global(N);
+    
+__kernel void mmul(
+    __global float* A,
+    __global float* B,
+    __global float* C,
+    __global float* D,
+    __global float* E,   
+      const int N)
+
+{
+    int k, j;
+    int i = get_global_id(0);
+    float tmp = 0.0f;
+    float tmpp = 0.0f;
+    if (i < N) {
+          for (j = 0; j < N; j++) {
+            tmp = 0.0f;
+            for (k = 0; k < N; k++){
+                tmp += A[i*N+k] * B[k*N+j];
+                tmpp = tmpp + 1.0f;
+            }
+            E[i*N+j] = tmp;
+            D[i*N+j] = i+j;    
+            C[i*N+j] = tmpp;   
+        }
+       
+    }
+}
+
+Display matrix A :
+3 3 3 
+3 3 3 
+3 3 3 
+Display matrix B :
+5 5 5 
+5 5 5 
+5 5 5 
+Order of matrix : 3
+Context for Device : 1
+
+The kernels ran in 0.004000 seconds
+o/p check E =  45 from: 3 and 5 for matrix order 3
+
+Resultant Matrix D(sum of workid i+j):
+0 1 2 
+1 2 3 
+2 3 4 
+
+Resultant Matrix C(no of times each work item ran):
+3 3 3 
+3 3 3 
+3 3 3 
+
+Resultant Matrix E(e = a * b):
+45 45 45 
+45 45 45 
+45 45 45 
+so the major difference bwtween the 1st and 2nd kernel is the no. of work items?
+for N=2, the first kernel will have 4 work items whereas the second kernel has only 2 work items ?
+ChatGPT
+Yes, that's correct. The primary difference between the first and second kernels is the organization of work-items, which affects the number of work-items.
+
+For N=2:
+
+In the first kernel:
+
+It uses a 2D organization with two global IDs (get_global_id(0) and get_global_id(1)).
+The global work size is specified as cl::NDRange(N, N), resulting in 4 work-items (2 * 2).
+In the second kernel:
+
+It uses a 1D organization with a single global ID (get_global_id(0)).
+The global work size is specified as cl::NDRange(N), resulting in 2 work-items.
+So, for N=2, the first kernel has 4 work-items, and the second kernel has 2 work-items. Each work-item in the first kernel is responsible for computing a single element of the resulting matrix, while each work-item in the second kernel is responsible for computing an entire row of the resulting matrix.
+
+kernel 3: copies entire row of A in private memory 
+cl::NDRange global(N);
+cl::NDRange local(ORDER / 16);
+           
+kernel config has both global and local mem : arowpriv_mmul(cl::EnqueueArgs(queue, global, local),
+
+__kernel void mmul(
+    const int N,
+    __global float* A,
+    __global float* B,
+    __global float* C)
+{
+    int k, j;
+    int i = get_global_id(0);
+    float Awrk[16];
+    float tmp;
+    if (i < N) {
+        for (k = 0; k < N; k++)
+            Awrk[k] = A[i*N+k];
+
+        for (j = 0; j < N; j++) {
+            tmp = 0.0f;
+            for (k = 0; k < N; k++)
+                tmp += Awrk[k] * B[k*N+j];
+            C[i*N+j] = tmp;
+        }
+    }
+}
+A[ i* N + k] is represented by Awrk[k] 
+when calculating 2*2 mmul for kernel2 [in hand notes], we saw that 
+the 1D values of A vector represent A[0] A[1] row1, A[2] A[3] row 2 in matrix; 
+for work item 0, Awrk[] has values of [ A[0], A[1]] ie., row 1 of A
+for work item 1, Awrk[] has values of [ A[2], A[2]] ie., row 2 of A 
+
+while doing mul op A*B, 
+tmp uses Awrk[] from private memory instead of A[]
+
+results for order 16 matrix for different approaches: 
+Using OpenCL device: Intel(R) UHD Graphics
+
+===== Sequential, matrix mult (dot prod), order 16 on host CPU ======
+ 0.00000 seconds at inf MFLOPS 
+
+===== OpenCL, matrix mult, C(i,j) per work item, order 16 ======
+ 0.00400 seconds at 2.0 MFLOPS 
+
+===== OpenCL, matrix mult, C row per work item, order 16 ======
+ 0.00200 seconds at 4.1 MFLOPS 
+
+===== OpenCL, matrix mult, C row, A row in priv mem, order 16 ======
+ 0.00100 seconds at 8.2 MFLOPS 

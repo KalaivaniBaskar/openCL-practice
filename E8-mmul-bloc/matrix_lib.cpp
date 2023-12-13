@@ -52,19 +52,17 @@ void initmat(int N, std::vector<float>& A, std::vector<float>& B, std::vector<fl
 
     /* Initialize matrices */
 
-	for (i = 0; i < N; i++)
-		for (j = 0; j < N; j++)
+    for (i = 0; i < N; i++)
+        for (j = 0; j < N; j++)
             A[i*N+j] = AVAL;
-			// A[i*N+j] = j+1.0f; // if not using AVAL 
 
-	for (i = 0; i < N; i++)
-		for (j = 0; j < N; j++)
+    for (i = 0; i < N; i++)
+        for (j = 0; j < N; j++)
             B[i*N+j] = BVAL;
-			// B[i*N+j] = j+1.0f; // if not using BVAL
 
-	for (i = 0; i < N; i++)
-		for (j = 0; j < N; j++)
-			C[i*N+j] = 0.0f;
+    for (i = 0; i < N; i++)
+        for (j = 0; j < N; j++)
+            C[i*N+j] = 0.0f;
 }
 
 //------------------------------------------------------------------------------
@@ -76,9 +74,9 @@ void zero_mat (int N, std::vector<float>& C)
 {
     int i, j;
 
-	for (i = 0; i < N; i++)
-		for (j = 0; j < N; j++)
-			C[i*N+j] = 0.0f;
+    for (i = 0; i < N; i++)
+        for (j = 0; j < N; j++)
+            C[i*N+j] = 0.0f;
 }
 
 //------------------------------------------------------------------------------
@@ -90,9 +88,9 @@ void trans(int N, std::vector<float>& B, std::vector<float>& Btrans)
 {
     int i, j;
 
-	for (i = 0; i < N; i++)
-		for (j = 0; j < N; j++)
-		    Btrans[j*N+i] = B[i*N+j];
+    for (i = 0; i < N; i++)
+        for (j = 0; j < N; j++)
+            Btrans[j*N+i] = B[i*N+j];
 }
 
 //------------------------------------------------------------------------------
@@ -104,12 +102,11 @@ float error(int N, std::vector<float>& C)
 {
    int i,j;
    float cval, errsq, err;
-   cval = (float) N * AVAL * BVAL; // change this if using diff values
+   cval = (float) N * AVAL * BVAL;
    errsq = 0.0f;
 
     for (i = 0; i < N; i++) {
         for (j = 0; j < N; j++) {
-            // cval = (float) j + 1;
             err = C[i*N+j] - cval;
             errsq += err * err;
         }
@@ -129,7 +126,7 @@ void results(int N, std::vector<float>& C, double run_time)
     float errsq;
     
     mflops = 2.0 * N * N * N/(1000000.0f * run_time);
-    printf(" %.5f seconds at %.1f MFLOPS \n",  run_time,mflops);
+    printf(" %.2f seconds at %.1f MFLOPS \n",  run_time,mflops);
     errsq = error(N, C);
     if (std::isnan(errsq) || errsq > TOL)
            printf("\n Errors in multiplication: %f\n",errsq);
